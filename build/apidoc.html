@@ -1,0 +1,254 @@
+<div class="apidocDiv">
+<style>
+/*csslint
+*/
+.apidocDiv {
+    background: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+}
+.apidocDiv a[href] {
+    color: #33f;
+    font-weight: bold;
+    text-decoration: none;
+}
+.apidocDiv a[href]:hover {
+    text-decoration: underline;
+}
+.apidocCodeCommentSpan {
+    background: #bbf;
+    color: #000;
+    display: block;
+}
+.apidocCodeKeywordSpan {
+    color: #d00;
+    font-weight: bold;
+}
+.apidocCodePre {
+    background: #eef;
+    border: 1px solid;
+    color: #777;
+    padding: 5px;
+    white-space: pre-wrap;
+}
+.apidocFooterDiv {
+    margin-top: 20px;
+    text-align: center;
+}
+.apidocModuleLi {
+    margin-top: 10px;
+}
+.apidocSectionDiv {
+    border-top: 1px solid;
+    margin-top: 20px;
+}
+.apidocSignatureSpan {
+    color: #777;
+    font-weight: bold;
+}
+</style>
+<h1>api documentation for
+    <a
+
+        href="https://github.com/1999/node-couchdb"
+
+    >node-couchdb (v1.1.1)</a>
+</h1>
+<h4>ES2015-compatible package to interact with CouchDB</h4>
+<div class="apidocSectionDiv"><a
+    href="#apidoc.tableOfContents"
+    id="apidoc.tableOfContents"
+><h1>table of contents</h1></a><ol>
+
+    <li class="apidocModuleLi"><a href="#apidoc.module.node-couchdb">module node-couchdb</a><ol>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.node-couchdb.node-couchdb">
+            function <span class="apidocSignatureSpan"></span>node-couchdb
+            <span class="apidocSignatureSpan">()</span>
+            </a>
+
+        </li>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.node-couchdb.toString">
+            function <span class="apidocSignatureSpan">node-couchdb.</span>toString
+            <span class="apidocSignatureSpan">()</span>
+            </a>
+
+        </li>
+
+    </ol></li>
+
+</ol></div>
+
+<div class="apidocSectionDiv">
+<h1><a href="#apidoc.module.node-couchdb" id="apidoc.module.node-couchdb">module node-couchdb</a></h1>
+
+
+    <h2>
+        <a href="#apidoc.element.node-couchdb.node-couchdb" id="apidoc.element.node-couchdb.node-couchdb">
+        function <span class="apidocSignatureSpan"></span>node-couchdb
+        <span class="apidocSignatureSpan">()</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">class NodeCouchDB {
+    constructor() {
+        let opts = arguments.length &#x3e; 0 &#x26;&#x26; arguments[0] !== undefined ? arguments[0] : {};
+
+        const instanceOpts = Object.assign({
+            protocol: &#x27;http&#x27;,
+            host: &#x27;127.0.0.1&#x27;,
+            port: 5984,
+            cache: null,
+            timeout: 5000,
+            auth: null
+        }, opts);
+
+        this._baseUrl = `${instanceOpts.protocol}://${instanceOpts.host}:${instanceOpts.port}`;
+        this._cache = instanceOpts.cache;
+
+        this._requestWrappedDefaults = _request2.default.defaults({
+            auth: instanceOpts.auth,
+            headers: {
+                &#x27;user-agent&#x27;: &#x27;node-couchdb/1&#x27;
+            },
+            json: true,
+            timeout: instanceOpts.timeout
+        });
+    }
+
+<span class="apidocCodeCommentSpan">    /**
+     * Use new cache mechanism (an &#x22;invalidate&#x22; method of the old cache machanism will be invoked)
+     * This method is useful if you want to call GC manually
+     *
+     * @param {Object} cacheObj
+     * @return {Undefined}
+     */
+</span>    useCache(cache) {
+        try {
+            this._cache.invalidate();
+        } catch (e) {}
+
+        this._cache = cache;
+    }
+
+    /**
+     * Get the list of all databases. Returns a promise which is
+     * - resolved with {Array} list of databases
+     * - rejected with `request` original error
+     *
+     * @return {Promise}
+     */
+    listDatabases() {
+        return this._requestWrapped(`${this._baseUrl}/_all_dbs`).then((_ref) =&#x3e; {
+            let body = _ref.body;
+            return body;
+        });
+    }
+
+    /**
+     * Creates a database. Returns a promise which is
+     * - resolved with no arguments
+     * - rejected with `request` original error
+     *
+     * @param {String} dbName
+     * @return {Promise}
+     */
+    createDatabase(dbName) {
+        return this._requestWrapped({
+            method: &#x27;PUT&#x27;,
+            url: `${this._baseUrl}/${dbName}`
+        }).then((_ref2) =&#x3e; {
+            let res = _ref2.res,
+                body = _ref2.body;
+
+            // database already exists
+            if (res.statusCode === 412) {
+                throw new RequestError(&#x27;EDBEXISTS&#x27;, `Database already exists: ${dbName}`, body);
+            }
+
+            if (res.statusCode === 401) {
+                throw new RequestError(&#x27;ENOTADMIN&#x27;, `Should be authorized as admin to create database: ${res.statusCode}`, body);
+            }
+
+            if (res.statusCode === 400) {
+                throw new RequestError(&#x27;EBADREQUEST&#x27;, res.body.reason, body);
+            }
+
+            if (res.statusCode !== 201) {
+                throw new RequestError(&#x27;EUNKNOWN&#x27;, `Unexpected status code while creating database ${dbName}: ${res.statusCode}`,
+body);
+            }
+        });
+    }
+
+    /**
+     * Drops database by its name. Returns a promise which is
+     * - resolved with no arguments
+     * - rejected with `request` original error
+     *
+     * @param {String} dbName
+     * @return {Promise}
+     */
+    dropDatabase(dbName) {
+        return this._requestWrapped({
+            method: &#x27;DELETE&#x27;,
+            url: `${this._baseUrl}/${dbName}/`
+        }).then((_ref3) =&#x3e; {
+            let res = _ref3.res,
+                body = _ref3.body;
+
+            // database not found
+            if (res.statusCode === 404) {
+                throw new RequestError(&#x27;EDBMISSING&#x27;, `Database not found: ${dbName}`, body);
+            }
+
+            if (res.statusCode === 401) {
+                throw new RequestError(&#x27;ENOTADMIN&#x27;, `Should be authorized as admin to delete database: ${res.statusCode}`, body);
+            }
+
+            if (res.statusCode !== 200) {
+                throw new RequestError(&#x27;EUNKNOWN&#x27;, `Unexpected status code while deleting database ${dbName}: ${res.statusCode}`,
+body);
+            }
+        });
+    }
+
+    /**
+     * Fetch data from CouchDB. Returns a promise which is
+     * - resolved with {data, headers, status} object
+     * - rejected with `request` original error
+     *
+     * @param {String} dbName database name
+     * @param {String} uri document ID or design view
+     * @param {Object} [query] query options as key: v ...</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
+
+
+
+    <h2>
+        <a href="#apidoc.element.node-couchdb.toString" id="apidoc.element.node-couchdb.toString">
+        function <span class="apidocSignatureSpan">node-couchdb.</span>toString
+        <span class="apidocSignatureSpan">()</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">toString = function () {
+    return text;
+}</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
+
+
+</div>
+
+<div class="apidocFooterDiv">
+    [ this document was created with
+    <a href="https://github.com/kaizhu256/node-utility2" target="_blank">utility2</a>
+    ]
+</div>
+</div>
